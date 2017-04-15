@@ -5,6 +5,10 @@ Created on 2017年4月12日
 --------Changed on 2017年4月14日----------
 Using OOP method to replace the functions
 ------------------------------------------
+--------Changed on 2017年4月15日----------
+Add escaping function
+Change check_exist function
+------------------------------------------
 @author: Lisen
 '''
 import MySQLdb
