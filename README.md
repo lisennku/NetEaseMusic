@@ -49,5 +49,5 @@ $+--------------+--------------+------+-----+---------+----------------+
 4. 增加标志位，防止在采集歌曲信息时，重复请求已经采集过的歌单链接
 5. 增加进度条显示
 
-# inspired by @Chengyumeng/spider163 
-# thansk netease
+## inspired by @Chengyumeng/spider163 
+## 感谢网易音乐
