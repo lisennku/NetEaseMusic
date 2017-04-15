@@ -22,6 +22,8 @@ class Music_Spider(Spider):
         print 'start of parsing'
         for music in musicarea:
             print 'parsing ' + music['name']
+            #should use exception because some musics have missing value on album name
+            #if not will cause ATTRIBUTE ERROR
             musictitle = Conn.escaping(music['name'].encode('utf-8'))
             musiclinkid = Conn.escaping(str(music['id']).encode('utf-8'))
             musiclink = Conn.escaping((Music_Spider.music_prefix+str(music['id'])).encode('utf-8'))
