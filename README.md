@@ -37,6 +37,16 @@ $| musicalbumid | varchar(150) | YES  |     | NULL    |                |
 $| musicdur     | varchar(150) | YES  |     | NULL    |                |
 $+--------------+--------------+------+-----+---------+----------------+
 ```
+## Class：
+```console
+$Class Conn
+```
+创建数据库连接对象
+
+```console
+$Class spider
+```
+爬虫基类
 ## done: 
 1. 爬取全部热门歌单
 2. 爬取全部热门歌单的歌曲
@@ -50,4 +60,5 @@ $+--------------+--------------+------+-----+---------+----------------+
 5. 增加进度条显示
 
 ## inspired by @Chengyumeng/spider163 
+## comments.py 代码来自@平胸小仙女 知乎连接：https://www.zhihu.com/question/36081767/answer/140287795
 ## 感谢网易音乐
