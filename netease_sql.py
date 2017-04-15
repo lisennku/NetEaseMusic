@@ -71,14 +71,21 @@ class Conn(object):
         """ 
         try:
             check_result = self.query_sql(sql)
-        except Exception, e:
-            print "Woops, error %s" % str(e) + "when querying database using " \
-                                                                        + sql
-        else:
             if len(check_result):
                 return True
             else:
                 return False
+        except Exception, e:
+            print "Woops, error %s" % str(e) + "when querying database using " \
+                                                                        + sql
+                
+#     for function check_exist, if calling function query_sql fails, it won't handle
+#     any exception because the exception has already been disposed inside query_sql
+#        else:
+#           if len(check_result):
+#                return True
+#           else:
+#               return False
 
 
     def close(self):
@@ -87,3 +94,7 @@ class Conn(object):
         @param self: instance 
         """
         self.db.close()
+        
+        
+    def escaping(self, string):
+        return MySQLdb.escape_string(string)
