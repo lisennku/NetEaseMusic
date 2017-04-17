@@ -4,6 +4,10 @@ Created on 2017/04/16
 A main folder contains different auther
 Author folder contains different excels for different music
 @author: Lisen
+--------------changed on 20170417--------
+Modify crawler function 
+Add escaping function
+-----------------------------------------
 '''
 
 import requests
@@ -12,7 +16,9 @@ from spider import Spider
 import pyExcelerator as pyex
 import os
 from encrypt import Enc
-
+from netease_sql import Conn
+import time
+import random
 
 
 class Commnet_Spider(Spider):
@@ -46,17 +52,32 @@ class Commnet_Spider(Spider):
             os.makedirs(file_dir)
             return file_dir
     
+    def escaping(self,strs):
+        """
+        some characters are illegal in the name of folders
+        this function will exclude the illegal charachter in the file path or name
+        @param strs: strings to be disposed for excluding illegal characters
+        """
+        
+        illegal_char = ['/','\\','\"','\'',':','?','<','?','|','*']
+        for char in illegal_char:
+            if char in strs:
+                strs = strs.replace(char,'')
+        return strs
+    
+        
     def WriteExcel(self, info, music, music_author):
         """
         commnets will be written to excel files for different music
         @param info: object that contains information to be written to excel
         @param music: music name for the file name
+        @param music_author: author name for making sub-folders
         """      
         # it'a a little complex for editing existed excel file.
         # and also disk-consuming for re-opening and modifying excel 
         # use list and dict type to store the hot comments and then write them
         # to excel at a time
-        print 'starting writing'
+        print 'starting writing %s' %music
         
         file_dir = self.file_dir(music_author)
         file_name = (file_dir + music + '.xls')
@@ -73,8 +94,7 @@ class Commnet_Spider(Spider):
             sheet.write(row,2,item['content'])
             row += 1
         excel.save(file_name) 
-        print 'done'
-        
+        print 'finish writing'
      
     def crawler(self, url, music, music_author, Enc, musicid=None):
         print 'starting crawler...'
@@ -82,38 +102,21 @@ class Commnet_Spider(Spider):
                 "params":Enc.get_params(),
                 "encSecKey":Enc.get_encSecKey()                
                 }
-        res = requests.post(url, data = data, headers=self.headers).content
-        json_text = json.loads(res)
-        total = json_text['total']             # total comments for the song
-        hotcomment = json_text['hotComments']  # hot comments area
-        hclist = []
-        for item in hotcomment:
-            hcdict = {"user":'',"likedCount":'',"content":'',"time":''}
-            hcdict["user"] = item['user']['nickname']    #.encode('utf-8', 'ignore')
-            hcdict["likedCount"] = item['likedCount']
-            hcdict['content'] = item['content']          #.encode('utf-8', 'ignore')
-            hclist.append(hcdict)
-        self.WriteExcel(hclist, music, music_author)
-        
-        
-
-        
-# if __name__ == '__main__':    
-#     headers = {
-#     'Cookie': 'appver=1.5.0.75771;',
-#     'Referer': 'http://music.163.com/'
-# }
-#     store_dir = 'C:/Users/Lisen/Desktop/test'
-#     # make sure to post data to the link like below
-#     url = "http://music.163.com/weapi/v1/resource/comments/R_SO_4_186016/?csrf_token="     
-#     first_param = "{rid:\"\", offset:\"0\", total:\"true\", limit:\"20\", csrf_token:\"\"}"
-#     second_param = "010001"
-#     third_param = "00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7"
-#     forth_param = "0CoJUm6Qyw8W8jud"
-#     enc = Enc(first_param, second_param, third_param, forth_param)
-#     cs = Commnet_Spider(headers, store_dir)
-#     music = u'晴天'
-#     music_author = u'Jay'
-#     print enc.get_encSecKey()
-#     print enc.get_params()
-#     cs.crawler(url=url, music = music, music_author=music_author, Enc = enc)
+        r = requests.post(url, data = data, headers=self.headers)
+        if r.status_code != 200:
+            print 'Status code is %d '  % r.status_code
+        else:
+            res = r.content
+            json_text = json.loads(res)
+#             total = json_text['total']             # total comments for the song
+            hotcomment = json_text['hotComments']  # hot comments area
+            if len(hotcomment) != 0:
+                hclist = []
+                for item in hotcomment:
+                    hcdict = {"user":'',"likedCount":'',"content":'',"time":''}
+                    hcdict["user"] = item['user']['nickname']    #.encode('utf-8', 'ignore')
+                    hcdict["likedCount"] = item['likedCount']
+                    hcdict['content'] = item['content']          #.encode('utf-8', 'ignore')
+                    hclist.append(hcdict)
+                self.WriteExcel(hclist, music, music_author)
+                print 'finish crawling'
