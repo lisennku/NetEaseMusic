@@ -1,64 +1,119 @@
-#encoding:utf-8
+#coding:utf-8
 '''
-Created on 2017年4月15日
+Created on 2017/04/16
+A main folder contains different auther
+Author folder contains different excels for different music
+@author: Lisen
+'''
 
-@author: 平胸小仙女  https://www.zhihu.com/question/36081767/answer/140287795
-'''
-from Crypto.Cipher import AES
-import base64
 import requests
 import json
+from spider import Spider
+import pyExcelerator as pyex
+import os
+from encrypt import Enc
 
 
-headers = {
-    'Cookie': 'appver=1.5.0.75771;',
-    'Referer': 'http://music.163.com/'
-}
 
-first_param = "{rid:\"\", offset:\"0\", total:\"true\", limit:\"20\", csrf_token:\"\"}"
-second_param = "010001"
-third_param = "00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7"
-forth_param = "0CoJUm6Qyw8W8jud"
-
-def get_params():
-    iv = "0102030405060708"
-    first_key = forth_param
-    second_key = 16 * 'F'
-    h_encText = AES_encrypt(first_param, first_key, iv)
-    h_encText = AES_encrypt(h_encText, second_key, iv)
-    return h_encText
-
-
-def get_encSecKey():
-    encSecKey = "257348aecb5e556c066de214e531faadd1c55d814f9be95fd06d6bff9f4c7a41f831f6394d5a3fd2e3881736d94a02ca919d952872e7d0a50ebfa1769a7a62d512f5f1ca21aec60bc3819a9c3ffca5eca9a0dba6d6f7249b06f5965ecfff3695b54e1c28f3f624750ed39e7de08fc8493242e26dbc4484a01c76f739e135637c"
-    return encSecKey
+class Commnet_Spider(Spider):
+    """
+    Commnet crawler class
+    """
+    def __init__(self, headers, store_dir):
+        """
+        Inherit and Overwrite base class's initial function
+        Initialize comments spider
+        @param store_dir: the main folder path 
+        """
+        super(Commnet_Spider,self).__init__(headers)
+        if store_dir[-1] != '/':
+            self.store_dir = store_dir + '/'   # ensure the path ends with '/' in case of wrong file name and file path
+        else:
+            self.store_dir = store_dir
+        print "Initializing comments spider"
     
+    
+    def file_dir(self, music_author):
+        """
+        examine the file and file path
+        @param music_author: the auther for music 
+        """
+        file_dir = self.store_dir + music_author + '/'
+        
+        if os.path.exists(file_dir):   # if file not exists
+            return file_dir
+        else:
+            os.makedirs(file_dir)
+            return file_dir
+    
+    def WriteExcel(self, info, music, music_author):
+        """
+        commnets will be written to excel files for different music
+        @param info: object that contains information to be written to excel
+        @param music: music name for the file name
+        """      
+        # it'a a little complex for editing existed excel file.
+        # and also disk-consuming for re-opening and modifying excel 
+        # use list and dict type to store the hot comments and then write them
+        # to excel at a time
+        print 'starting writing'
+        
+        file_dir = self.file_dir(music_author)
+        file_name = (file_dir + music + '.xls')
+        excel = pyex.Workbook()
+        sheet = excel.add_sheet('comment')
+        #header line
+        sheet.write(0,0,'user')
+        sheet.write(0,1,'likedCount')
+        sheet.write(0,2,'content')
+        row = 1
+        for item in info:
+            sheet.write(row,0,item['user'])         # write function won't overwrite existed value
+            sheet.write(row,1,item['likedCount'])
+            sheet.write(row,2,item['content'])
+            row += 1
+        excel.save(file_name) 
+        print 'done'
+        
+     
+    def crawler(self, url, music, music_author, Enc, musicid=None):
+        print 'starting crawler...'
+        data = {
+                "params":Enc.get_params(),
+                "encSecKey":Enc.get_encSecKey()                
+                }
+        res = requests.post(url, data = data, headers=self.headers).content
+        json_text = json.loads(res)
+        total = json_text['total']             # total comments for the song
+        hotcomment = json_text['hotComments']  # hot comments area
+        hclist = []
+        for item in hotcomment:
+            hcdict = {"user":'',"likedCount":'',"content":'',"time":''}
+            hcdict["user"] = item['user']['nickname']    #.encode('utf-8', 'ignore')
+            hcdict["likedCount"] = item['likedCount']
+            hcdict['content'] = item['content']          #.encode('utf-8', 'ignore')
+            hclist.append(hcdict)
+        self.WriteExcel(hclist, music, music_author)
+        
+        
 
-def AES_encrypt(text, key, iv):
-    pad = 16 - len(text) % 16
-    text = text + pad * chr(pad)
-    encryptor = AES.new(key, AES.MODE_CBC, iv)
-    encrypt_text = encryptor.encrypt(text)
-    encrypt_text = base64.b64encode(encrypt_text)
-    return encrypt_text
-
-
-def get_json(url, params, encSecKey):
-    data = {
-         "params": params,
-         "encSecKey": encSecKey
-    }
-    response = requests.post(url, headers=headers, data=data)
-    return response.content
-
-
-if __name__ == "__main__":
-    url = "http://music.163.com/weapi/v1/resource/comments/R_SO_4_441489016/?csrf_token="
-    params = get_params();
-    encSecKey = get_encSecKey();
-    json_text = get_json(url, params, encSecKey)
-    json_dict = json.loads(json_text)
-    print json_dict['total']
-    print len(json_dict['hotComments'])
-    for item in json_dict['comments']:
-        print item['content'].encode('utf-8', 'ignore')
+        
+# if __name__ == '__main__':    
+#     headers = {
+#     'Cookie': 'appver=1.5.0.75771;',
+#     'Referer': 'http://music.163.com/'
+# }
+#     store_dir = 'C:/Users/Lisen/Desktop/test'
+#     # make sure to post data to the link like below
+#     url = "http://music.163.com/weapi/v1/resource/comments/R_SO_4_186016/?csrf_token="     
+#     first_param = "{rid:\"\", offset:\"0\", total:\"true\", limit:\"20\", csrf_token:\"\"}"
+#     second_param = "010001"
+#     third_param = "00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7"
+#     forth_param = "0CoJUm6Qyw8W8jud"
+#     enc = Enc(first_param, second_param, third_param, forth_param)
+#     cs = Commnet_Spider(headers, store_dir)
+#     music = u'晴天'
+#     music_author = u'Jay'
+#     print enc.get_encSecKey()
+#     print enc.get_params()
+#     cs.crawler(url=url, music = music, music_author=music_author, Enc = enc)
