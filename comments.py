@@ -8,6 +8,10 @@ Author folder contains different excels for different music
 Modify crawler function 
 Add escaping function
 -----------------------------------------
+--------------changed on 20170417--------
+Add proxy ip
+Add parse timestamp
+-----------------------------------------
 '''
 
 import requests
@@ -19,25 +23,35 @@ from encrypt import Enc
 from netease_sql import Conn
 import time
 import random
-
+from proxyip import Proxy_IP
 
 class Commnet_Spider(Spider):
     """
     Commnet crawler class
     """
-    def __init__(self, headers, store_dir):
+    def __init__(self, headers, store_dir, iplist):
         """
         Inherit and Overwrite base class's initial function
         Initialize comments spider
         @param store_dir: the main folder path 
         """
         super(Commnet_Spider,self).__init__(headers)
+        self.ip = iplist
         if store_dir[-1] != '/':
             self.store_dir = store_dir + '/'   # ensure the path ends with '/' in case of wrong file name and file path
         else:
             self.store_dir = store_dir
         print "Initializing comments spider"
     
+    def parse_timestapm(self, timestamp):
+        """
+        parse timestamp
+        @param timestamp: comment date & time 
+        """
+        timestamp = timestamp / 1000
+        time_array = time.localtime(timestamp)
+        dt = time.strftime("%Y-%m-%d %H:%M:%S", time_array)
+        return dt        
     
     def file_dir(self, music_author):
         """
@@ -85,13 +99,15 @@ class Commnet_Spider(Spider):
         sheet = excel.add_sheet('comment')
         #header line
         sheet.write(0,0,'user')
-        sheet.write(0,1,'likedCount')
-        sheet.write(0,2,'content')
+        sheet.write(0,1,'time')
+        sheet.write(0,2,'likedCount')
+        sheet.write(0,3,'content')
         row = 1
         for item in info:
             sheet.write(row,0,item['user'])         # write function won't overwrite existed value
             sheet.write(row,1,item['likedCount'])
             sheet.write(row,2,item['content'])
+            sheet.write(row,3,item['time'])
             row += 1
         excel.save(file_name) 
         print 'finish writing'
@@ -102,21 +118,28 @@ class Commnet_Spider(Spider):
                 "params":Enc.get_params(),
                 "encSecKey":Enc.get_encSecKey()                
                 }
-        r = requests.post(url, data = data, headers=self.headers)
-        if r.status_code != 200:
-            print 'Status code is %d '  % r.status_code
+        try:
+            r = requests.post(url, data = data, headers=self.headers, proxies=random.choice(self.ip))
+        except Exception,e:
+            print e
         else:
-            res = r.content
-            json_text = json.loads(res)
-#             total = json_text['total']             # total comments for the song
-            hotcomment = json_text['hotComments']  # hot comments area
-            if len(hotcomment) != 0:
-                hclist = []
-                for item in hotcomment:
-                    hcdict = {"user":'',"likedCount":'',"content":'',"time":''}
-                    hcdict["user"] = item['user']['nickname']    #.encode('utf-8', 'ignore')
-                    hcdict["likedCount"] = item['likedCount']
-                    hcdict['content'] = item['content']          #.encode('utf-8', 'ignore')
-                    hclist.append(hcdict)
-                self.WriteExcel(hclist, music, music_author)
-                print 'finish crawling'
+            if r.status_code != 200:
+                print 'Status code is %d '  % r.status_code
+            else:
+                res = r.content
+                json_text = json.loads(res)
+    #             total = json_text['total']             # total comments for the song
+                hotcomment = json_text['hotComments']  # hot comments area
+                if len(hotcomment) == 0:
+                    print 'No Hot Comments for %s !' % music
+                else:
+                    hclist = []
+                    for item in hotcomment:
+                        hcdict = {"user":'',"likedCount":'',"content":'',"time":''}
+                        hcdict["user"] = item['user']['nickname']    #.encode('utf-8', 'ignore')
+                        hcdict["likedCount"] = item['likedCount']
+                        hcdict['content'] = item['content']          #.encode('utf-8', 'ignore')
+                        hcdict['time'] = self.parse_timestapm(item['time'])
+                        hclist.append(hcdict)
+                    self.WriteExcel(hclist, music, music_author)
+                    print 'finish crawling'
