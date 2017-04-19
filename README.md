@@ -82,6 +82,10 @@ $Class Commnet_Spider
 ```
 评论爬虫类
 
+```console
+$Class Proxy_IP
+```
+代理IP获取类，防止单一IP频繁爬取被封
 ## done: 
 1. 爬取全部热门歌单
 2. 爬取全部热门歌单的歌曲
